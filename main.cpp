@@ -16,7 +16,7 @@ struct Token
 pair<string, string> getNextToken(char currentChar, ifstream& inputFile);
 
 int main(int argc, char* args[]) {
-    auto start = chrono::high_resolution_clock::now();
+    //auto start = chrono::high_resolution_clock::now();
 
     bool hFlag = false;
     bool rFlag = false;
@@ -691,10 +691,10 @@ int main(int argc, char* args[]) {
         }
     }
 
-    auto end = chrono::high_resolution_clock::now();
-    chrono::duration<double> elapsed = end - start;
+    // auto end = chrono::high_resolution_clock::now();
+    // chrono::duration<double> elapsed = end - start;
 
-    cout << "Scanning completed in " << elapsed.count() << " seconds." << endl;
+    // cout << "Scanning completed in " << elapsed.count() << " seconds." << endl;
 
     return 0;
 }
