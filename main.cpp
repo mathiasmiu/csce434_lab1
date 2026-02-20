@@ -12,6 +12,32 @@ struct Token
     string value;
 };
 
+struct IR
+{
+    int lineNum;
+    string opcode;
+
+    int opc1;
+    int opc2;
+    int opc3;
+
+    IR* next;
+    IR* prev;
+
+    IR(int lineNum, string opcode, int opc1, int opc2, int opc3) : lineNum(lineNum), opcode(opcode), opc1(opc1), opc2(opc2), opc3(opc3), next(nullptr), prev(nullptr) {}
+};
+
+void addIR(IR*& head, IR*& tail, IR* newIR) {
+    if (!head) {
+        head = newIR;
+        tail = newIR;
+    } else {
+        tail->next = newIR;
+        newIR->prev = tail;
+        tail = newIR;
+    }
+}
+
 
 pair<string, string> getNextToken(char currentChar, ifstream& inputFile);
 
@@ -31,6 +57,16 @@ int main(int argc, char* args[]) {
     bool grammarErrorFlag = false;
 
     int count = 0;
+
+    IR* head = nullptr;
+    IR* tail = nullptr;
+
+    int lineNum = 1;
+    string currentOpCode = "";
+
+    int opc1 = 0;
+    int opc2 = 0;
+    int opc3 = 0;
 
 
     string filename = "";
@@ -112,7 +148,7 @@ int main(int argc, char* args[]) {
                 cout << line << " <" << token.type << ", " << token.value << ">" << endl;
             }
             line++;
-            continue;
+            //continue;
         }
 
         if(currentChar == ' ' || currentChar == '\t' || currentChar == '\r'){
@@ -467,6 +503,13 @@ int main(int argc, char* args[]) {
             outputFlag = false;
             nopFlag = false;
 
+            currentOpCode = token.value;
+            lineNum = token.line;
+
+            opc1 = 0;
+            opc2 = 0;
+            opc3 = 0;
+
             count = 1;
             continue;
         } else if(token.type == "LOADI"){
@@ -475,6 +518,13 @@ int main(int argc, char* args[]) {
             arithopFlag = false;
             outputFlag = false;
             nopFlag = false;
+
+            currentOpCode = token.value;
+            lineNum = token.line;
+
+            opc1 = 0;
+            opc2 = 0;
+            opc3 = 0;
 
             count = 1;
             continue;
@@ -485,6 +535,13 @@ int main(int argc, char* args[]) {
             outputFlag = false;
             nopFlag = false;
 
+            currentOpCode = token.value;
+            lineNum = token.line;
+
+            opc1 = 0;
+            opc2 = 0;
+            opc3 = 0;
+
             count = 1;
             continue;
         } else if(token.type == "OUTPUT"){
@@ -494,6 +551,13 @@ int main(int argc, char* args[]) {
             arithopFlag = false;
             nopFlag = false;
 
+            currentOpCode = token.value;
+            lineNum = token.line;
+
+            opc1 = 0;
+            opc2 = 0;
+            opc3 = 0;
+
             count = 1;
             continue;
         } else if(token.type == "NOP"){
@@ -502,6 +566,14 @@ int main(int argc, char* args[]) {
             loadIFlag = false;
             arithopFlag = false;
             outputFlag = false;
+
+            currentOpCode = token.value;
+            lineNum = token.line;
+
+            opc1 = 0;
+            opc2 = 0;
+            opc3 = 0;
+
             count = 1;
             continue;
         }
@@ -519,8 +591,10 @@ int main(int argc, char* args[]) {
             if(count == 1 || count == 3){
                 if(token.type == "REGISTER"){
                     if (count == 1){
+                        opc1 = stoi(token.value.substr(1));
                         count = 2;
                     } else {
+                        opc3 = stoi(token.value.substr(1));
                         count = 4;
                     }
                 } else {
@@ -538,6 +612,15 @@ int main(int argc, char* args[]) {
                 }
             } else if (count == 4){
                 if(token.type == "EOL"){
+                    IR* newIR = new IR(lineNum, currentOpCode, opc1, opc2, opc3);
+                    addIR(head, tail, newIR);
+
+                    opc1 = 0;
+                    opc2 = 0;
+                    opc3 = 0;
+
+                    currentOpCode = "";
+
                     count = 0;
                     memopFlag = false;
                     loadIFlag = false;
@@ -554,6 +637,7 @@ int main(int argc, char* args[]) {
             if (count == 1){
                 //cout << "TOKEN TYPE: " << token.type << endl;
                 if (token.type == "CONSTANT"){
+                    opc1 = stoi(token.value);
                     count = 2;
                 } else {
                     cerr << "ERROR" << line << ": Expected a CONSTANT token but recieved a " << token.type << " token type on line " << line << endl;
@@ -570,6 +654,7 @@ int main(int argc, char* args[]) {
                 }
             } else if (count == 3){
                 if (token.type == "REGISTER"){
+                    opc3 = stoi(token.value.substr(1));
                     count = 4;
                 } else {
                     cerr << "ERROR" << line << ": Expected a REGISTER token but recieved a " << token.type << " token type on line " << line << endl;
@@ -578,6 +663,15 @@ int main(int argc, char* args[]) {
                 }
             } else if (count == 4){
                 if(token.type == "EOL"){
+                    IR* newIR = new IR(lineNum, currentOpCode, opc1, opc2, opc3);
+                    addIR(head, tail, newIR);
+
+                    opc1 = 0;
+                    opc2 = 0;
+                    opc3 = 0;
+
+                    currentOpCode = "";
+
                     count = 0;
                     loadIFlag = false;
                     memopFlag = false;
@@ -594,10 +688,13 @@ int main(int argc, char* args[]) {
             if(count == 1 || count == 3 || count == 5){
                 if(token.type == "REGISTER"){
                     if(count == 1){
+                        opc1 = stoi(token.value.substr(1));
                         count = 2;
                     } else if (count == 3){
+                        opc2 = stoi(token.value.substr(1));
                         count = 4;
                     } else {
+                        opc3 = stoi(token.value.substr(1)); 
                         count = 6;
                     }
                 } else {
@@ -623,6 +720,15 @@ int main(int argc, char* args[]) {
                 }
             } else if (count == 6){
                 if(token.type == "EOL"){
+                    IR* newIR = new IR(lineNum, currentOpCode, opc1, opc2, opc3);
+                    addIR(head, tail, newIR);
+
+                    opc1 = 0;
+                    opc2 = 0;
+                    opc3 = 0;
+
+                    currentOpCode = "";
+
                     count = 0;
                     arithopFlag = false;
                     memopFlag = false;
@@ -638,6 +744,7 @@ int main(int argc, char* args[]) {
         } else if (outputFlag == true){
             if (count == 1){
                 if (token.type == "CONSTANT"){
+                    opc1 = stoi(token.value);
                     count = 2;
                 } else {
                     cerr << "ERROR" << line << ": Expected a CONSTANT token but recieved a " << token.type << " token type on line " << line << endl;
@@ -646,6 +753,15 @@ int main(int argc, char* args[]) {
                 }
             } else if (count == 2){
                 if(token.type == "EOL"){
+                    IR* newIR = new IR(lineNum, currentOpCode, opc1, opc2, opc3);
+                    addIR(head, tail, newIR);
+
+                    opc1 = 0;
+                    opc2 = 0;
+                    opc3 = 0;
+
+                    currentOpCode = "";
+
                     count = 0;
                     outputFlag = false;
                     memopFlag = false;
@@ -660,6 +776,15 @@ int main(int argc, char* args[]) {
             }
         } else if (nopFlag == true){
             if(token.type == "EOL"){
+                IR* newIR = new IR(lineNum, currentOpCode, opc1, opc2, opc3);
+                addIR(head, tail, newIR);
+
+                opc1 = 0;
+                opc2 = 0;
+                opc3 = 0;
+
+                currentOpCode = "";
+
                 count = 0;
                 nopFlag = false;
             } else {
@@ -688,6 +813,15 @@ int main(int argc, char* args[]) {
             cout << "Bad parsing. Errors detected. >:|" << endl;
         } else {
             cout << "Good parsing! No errors! :)" << endl;
+        }
+    }
+
+    if(whatFlag == "-r" && !grammarErrorFlag){
+        IR* current = head;
+
+        while(current){
+            cout << current->lineNum << ": " << current->opcode << " " << current->opc1 << ", " << current->opc2 << ", " << current->opc3 << endl;
+            current = current->next;
         }
     }
 
