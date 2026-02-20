@@ -24,7 +24,17 @@ struct IR
     IR* next;
     IR* prev;
 
-    IR(int lineNum, string opcode, int opc1, int opc2, int opc3) : lineNum(lineNum), opcode(opcode), opc1(opc1), opc2(opc2), opc3(opc3), next(nullptr), prev(nullptr) {}
+    IR(int lineNum, string opcode, int opc1, int opc2, int opc3){
+        this->lineNum = lineNum;
+        this->opcode = opcode;
+
+        this->opc1 = opc1;
+        this->opc2 = opc2;
+        this->opc3 = opc3;
+
+        this->next = nullptr;
+        this->prev = nullptr;
+    }
 };
 
 void addIR(IR*& head, IR*& tail, IR* newIR) {
@@ -64,9 +74,9 @@ int main(int argc, char* args[]) {
     int lineNum = 1;
     string currentOpCode = "";
 
-    int opc1 = 0;
-    int opc2 = 0;
-    int opc3 = 0;
+    int opc1 = -42;
+    int opc2 = -42;
+    int opc3 = -42;
 
 
     string filename = "";
@@ -142,20 +152,24 @@ int main(int argc, char* args[]) {
 
     while (inputFile.get(currentChar)) {
 
+        bool errorFlag = false;
+        bool madeToken = false;
+
         if (currentChar == '\n') {
             token = {line, "EOL", "\\n"};
             if(whatFlag == "-s"){
                 cout << line << " <" << token.type << ", " << token.value << ">" << endl;
             }
             line++;
+            madeToken = true;
             //continue;
         }
 
-        if(currentChar == ' ' || currentChar == '\t' || currentChar == '\r'){
+        else if(currentChar == ' ' || currentChar == '\t' || currentChar == '\r'){
             continue;
         }
 
-        if(currentChar == '/'){
+        else if(currentChar == '/'){
             int peakChar = inputFile.peek();
 
             if(peakChar != EOF  && (char)peakChar == '/'){
@@ -164,337 +178,365 @@ int main(int argc, char* args[]) {
                 while(currentChar != '\n' && inputFile.get(currentChar)){
                     ; //heeeeeyyyyy we skipping through here again. fun fact: the bigget mammal in the world is a blue whale.
                 }
+                token = {line, "EOL", "\\n"};
+
+                if(whatFlag == "-s"){
+                    cout << line << " <" << token.type << ", " << token.value << ">" << endl;
+                }
+
                 line++;
-                continue;
+                madeToken = true;
+                //continue;
             } else {
                 cerr << "ERROR" << line << ": Invalid token (potential comment), skipping to the end of the current line" << endl;
                 while(currentChar != '\n' && inputFile.get(currentChar)){
                     ; //second fun fact: honey is the only food that never goes bad (i learned this recently)
                 }
+                token = {line, "EOL", "\\n"};
+
+                if(whatFlag == "-s"){
+                    cout << line << " <" << token.type << ", " << token.value << ">" << endl;
+                }
+
+                line++;
+                madeToken = true;
+                //continue;
+            }
+        }
+
+        if(!madeToken){
+            int peekAheadChar = inputFile.peek();
+            
+            if(peekAheadChar == EOF){
+                break;
+            } else {
+                nextChar = (char)peekAheadChar;
+            }
+
+            currentToken.clear();
+
+            if(currentChar == 's' || currentChar == 'l' || currentChar == 'r' || currentChar == 'm' || currentChar == 'a' || currentChar == 'n' || currentChar == 'o' || currentChar == '=' || currentChar == ',' || currentChar == '\n' || (currentChar >= '0' && currentChar <= '9') || currentChar == '/'){
+                currentToken += currentChar;
+            } else {
+                cerr << "ERROR" << line << ": Start of token is invalid, skipping to end" << endl;
+
+                while(currentChar != '\n' && inputFile.get(currentChar)){
+                    //hello. this is a useless comment. hope you read it! Have a good day whoever is grading this haha
+                    ;
+                }
                 line++;
                 continue;
             }
-        }
 
-        int peekAheadChar = inputFile.peek();
-        
-        if(peekAheadChar == EOF){
-            break;
-        } else {
-            nextChar = (char)peekAheadChar;
-        }
+            bool leadingZeroFlag = true;
 
-        currentToken.clear();
+            if (currentToken[0] == 's'){
+                while(true){
+                    int peakChar = inputFile.peek();
+                    if(peakChar == EOF){
+                        break;
+                    } else {
+                        nextChar = (char)peakChar;
+                    }
 
-        if(currentChar == 's' || currentChar == 'l' || currentChar == 'r' || currentChar == 'm' || currentChar == 'a' || currentChar == 'n' || currentChar == 'o' || currentChar == '=' || currentChar == ',' || currentChar == '\n' || (currentChar >= '0' && currentChar <= '9') || currentChar == '/'){
-            currentToken += currentChar;
-        } else {
-            cerr << "ERROR" << line << ": Start of token is invalid, skipping to end" << endl;
+                    if(nextChar == ' ' || nextChar == '\n' || nextChar == '\t' || nextChar == '\r' || nextChar == ',' || nextChar == '=' || nextChar == '/'){
+                        break;
+                    }
 
-            while(currentChar != '\n' && inputFile.get(currentChar)){
-                //hello. this is a useless comment. hope you read it! Have a good day whoever is grading this haha
-                ;
-            }
-            line++;
-            continue;
-        }
-
-        bool errorFlag = false;
-        bool leadingZeroFlag = true;
-
-        if (currentToken[0] == 's'){
-            while(true){
-                int peakChar = inputFile.peek();
-                if(peakChar == EOF){
-                    break;
-                } else {
-                    nextChar = (char)peakChar;
-                }
-
-                if(nextChar == ' ' || nextChar == '\n' || nextChar == '\t' || nextChar == '\r' || nextChar == ',' || nextChar == '=' || nextChar == '/'){
-                    break;
-                }
-
-                inputFile.get(nextChar);
-                currentToken += nextChar;
-            }
-
-            if (currentToken == "store"){
-                token = {line, "MEMOP", currentToken};
-                if(whatFlag == "-s"){
-                    cout << line << " <" << token.type << ", " << token.value << ">" << endl;
-                }
-                currentToken.clear();
-            } else if (currentToken == "sub"){
-                token = {line, "ARITHOP", currentToken};
-                if(whatFlag == "-s"){
-                    cout << line << " <" << token.type << ", " << token.value << ">" << endl;
-                }
-                currentToken.clear();
-            } else {
-                errorFlag = true;
-            }
-        } else if (currentToken[0] == 'l'){
-            while(true){
-                int peakChar = inputFile.peek();
-                if(peakChar == EOF){
-                    break;
-                } else {
-                    nextChar = (char)peakChar;
-                }
-
-                if(nextChar == ' ' || nextChar == '\n' || nextChar == '\t' || nextChar == '\r' || nextChar == ',' || nextChar == '=' || nextChar == '/'){
-                    break;
-                }
-
-                inputFile.get(nextChar);
-                currentToken += nextChar;
-            }
-
-            if (currentToken == "load"){
-                token = {line, "MEMOP", currentToken};
-                if(whatFlag == "-s"){
-                    cout << line << " <" << token.type << ", " << token.value << ">" << endl;
-                }
-                currentToken.clear();
-            } else if (currentToken == "loadI"){
-                token = {line, "LOADI", currentToken};
-                if(whatFlag == "-s"){
-                    cout << line << " <" << token.type << ", " << token.value << ">" << endl;
-                }
-                currentToken.clear();
-            } else if (currentToken == "lshift"){
-                token = {line, "ARITHOP", currentToken};
-                if(whatFlag == "-s"){
-                    cout << line << " <" << token.type << ", " << token.value << ">" << endl;
-                }
-                currentToken.clear();
-            } else {
-                errorFlag = true;
-            }
-        } else if (currentToken[0] == 'r'){
-            while(true){
-                int peakChar = inputFile.peek();
-                if(peakChar == EOF){
-                    break;
-                } else {
-                    nextChar = (char)peakChar;
-                }
-
-                if(nextChar == ' ' || nextChar == '\n' || nextChar == '\t' || nextChar == '\r' || nextChar == ',' || nextChar == '=' || nextChar == '/'){
-                    break;
-                }
-
-                if(nextChar == '0' && currentToken == "r"){
                     inputFile.get(nextChar);
-                    continue;
+                    currentToken += nextChar;
                 }
 
-                leadingZeroFlag = false;
-                inputFile.get(nextChar);
-                currentToken += nextChar;
-            }
-
-            if (currentToken == "rshift"){
-                token = {line, "ARITHOP", currentToken};
-                if(whatFlag == "-s"){
-                    cout << line << " <" << token.type << ", " << token.value << ">" << endl;
-                }
-                currentToken.clear();
-            } else if (currentToken == "r"){
-                currentToken = "r0";
-                token = {line, "REGISTER", currentToken};
-                if(whatFlag == "-s"){
-                    cout << line << " <" << token.type << ", " << token.value << ">" << endl;
-                }
-            } else if (currentToken.size() > 1 && isdigit(currentToken[1])){
-                token = {line, "REGISTER", currentToken};
-                if(whatFlag == "-s"){
-                    cout << line << " <" << token.type << ", " << token.value << ">" << endl;
-                }
-                currentToken.clear();
-            } else {
-                errorFlag = true;
-            }
-        } else if (currentToken[0] == 'm'){
-            while(true){
-                int peakChar = inputFile.peek();
-                if(peakChar == EOF){
-                    break;
+                if (currentToken == "store"){
+                    token = {line, "MEMOP", currentToken};
+                    if(whatFlag == "-s"){
+                        cout << line << " <" << token.type << ", " << token.value << ">" << endl;
+                    }
+                    currentToken.clear();
+                    madeToken = true;
+                } else if (currentToken == "sub"){
+                    token = {line, "ARITHOP", currentToken};
+                    if(whatFlag == "-s"){
+                        cout << line << " <" << token.type << ", " << token.value << ">" << endl;
+                    }
+                    currentToken.clear();
+                    madeToken = true;
                 } else {
-                    nextChar = (char)peakChar;
+                    errorFlag = true;
+                }
+            } else if (currentToken[0] == 'l'){
+                while(true){
+                    int peakChar = inputFile.peek();
+                    if(peakChar == EOF){
+                        break;
+                    } else {
+                        nextChar = (char)peakChar;
+                    }
+
+                    if(nextChar == ' ' || nextChar == '\n' || nextChar == '\t' || nextChar == '\r' || nextChar == ',' || nextChar == '=' || nextChar == '/'){
+                        break;
+                    }
+
+                    inputFile.get(nextChar);
+                    currentToken += nextChar;
                 }
 
-                if(nextChar == ' ' || nextChar == '\n' || nextChar == '\t' || nextChar == '\r' || nextChar == ',' || nextChar == '=' || nextChar == '/'){
-                    break;
-                }
-
-                inputFile.get(nextChar);
-                currentToken += nextChar;
-            }
-
-            if (currentToken == "mult"){
-                token = {line, "ARITHOP", currentToken};
-                if(whatFlag == "-s"){
-                    cout << line << " <" << token.type << ", " << token.value << ">" << endl;
-                }
-                currentToken.clear();
-            } else {
-                errorFlag = true;
-            }
-        } else if (currentToken[0] == 'a'){
-            while(true){
-                int peakChar = inputFile.peek();
-                if(peakChar == EOF){
-                    break;
+                if (currentToken == "load"){
+                    token = {line, "MEMOP", currentToken};
+                    if(whatFlag == "-s"){
+                        cout << line << " <" << token.type << ", " << token.value << ">" << endl;
+                    }
+                    currentToken.clear();
+                    madeToken = true;
+                } else if (currentToken == "loadI"){
+                    token = {line, "LOADI", currentToken};
+                    if(whatFlag == "-s"){
+                        cout << line << " <" << token.type << ", " << token.value << ">" << endl;
+                    }
+                    currentToken.clear();
+                    madeToken = true;
+                } else if (currentToken == "lshift"){
+                    token = {line, "ARITHOP", currentToken};
+                    if(whatFlag == "-s"){
+                        cout << line << " <" << token.type << ", " << token.value << ">" << endl;
+                    }
+                    currentToken.clear();
+                    madeToken = true;
                 } else {
-                    nextChar = (char)peakChar;
+                    errorFlag = true;
+                }
+            } else if (currentToken[0] == 'r'){
+                while(true){
+                    int peakChar = inputFile.peek();
+                    if(peakChar == EOF){
+                        break;
+                    } else {
+                        nextChar = (char)peakChar;
+                    }
+
+                    if(nextChar == ' ' || nextChar == '\n' || nextChar == '\t' || nextChar == '\r' || nextChar == ',' || nextChar == '=' || nextChar == '/'){
+                        break;
+                    }
+
+                    if(nextChar == '0' && currentToken == "r"){
+                        inputFile.get(nextChar);
+                        continue;
+                    }
+
+                    leadingZeroFlag = false;
+                    inputFile.get(nextChar);
+                    currentToken += nextChar;
                 }
 
-                if(nextChar == ' ' || nextChar == '\n' || nextChar == '\t' || nextChar == '\r' || nextChar == ',' || nextChar == '=' || nextChar == '/'){
-                    break;
-                }
-
-                inputFile.get(nextChar);
-                currentToken += nextChar;
-            }
-
-            if (currentToken == "add"){
-                token = {line, "ARITHOP", currentToken};
-                if(whatFlag == "-s"){
-                    cout << line << " <" << token.type << ", " << token.value << ">" << endl;
-                }
-                currentToken.clear();
-            } else {
-                errorFlag = true;
-            }
-        } else if (currentToken[0] == 'n'){
-            while(true){
-                int peakChar = inputFile.peek();
-                if(peakChar == EOF){
-                    break;
+                if (currentToken == "rshift"){
+                    token = {line, "ARITHOP", currentToken};
+                    if(whatFlag == "-s"){
+                        cout << line << " <" << token.type << ", " << token.value << ">" << endl;
+                    }
+                    currentToken.clear();
+                    madeToken = true;
+                } else if (currentToken == "r"){
+                    currentToken = "r0";
+                    token = {line, "REGISTER", currentToken};
+                    if(whatFlag == "-s"){
+                        cout << line << " <" << token.type << ", " << token.value << ">" << endl;
+                    }
+                    madeToken = true;
+                } else if (currentToken.size() > 1 && isdigit(currentToken[1])){
+                    token = {line, "REGISTER", currentToken};
+                    if(whatFlag == "-s"){
+                        cout << line << " <" << token.type << ", " << token.value << ">" << endl;
+                    }
+                    currentToken.clear();
+                    madeToken = true;
                 } else {
-                    nextChar = (char)peakChar;
+                    errorFlag = true;
+                }
+            } else if (currentToken[0] == 'm'){
+                while(true){
+                    int peakChar = inputFile.peek();
+                    if(peakChar == EOF){
+                        break;
+                    } else {
+                        nextChar = (char)peakChar;
+                    }
+
+                    if(nextChar == ' ' || nextChar == '\n' || nextChar == '\t' || nextChar == '\r' || nextChar == ',' || nextChar == '=' || nextChar == '/'){
+                        break;
+                    }
+
+                    inputFile.get(nextChar);
+                    currentToken += nextChar;
                 }
 
-                if(nextChar == ' ' || nextChar == '\n' || nextChar == '\t' || nextChar == '\r' || nextChar == ',' || nextChar == '=' || nextChar == '/'){
-                    break;
-                }
-
-                inputFile.get(nextChar);
-                currentToken += nextChar;
-            }
-
-            if (currentToken == "nop"){
-                token = {line, "NOP", currentToken};
-                if(whatFlag == "-s"){
-                    cout << line << " <" << token.type << ", " << token.value << ">" << endl;
-                }
-                currentToken.clear();
-            } else {
-                errorFlag = true;
-            }
-        } else if (currentToken[0] == 'o'){
-            while(true){
-                int peakChar = inputFile.peek();
-                if(peakChar == EOF){
-                    break;
+                if (currentToken == "mult"){
+                    token = {line, "ARITHOP", currentToken};
+                    if(whatFlag == "-s"){
+                        cout << line << " <" << token.type << ", " << token.value << ">" << endl;
+                    }
+                    currentToken.clear();
+                    madeToken = true;
                 } else {
-                    nextChar = (char)peakChar;
+                    errorFlag = true;
+                }
+            } else if (currentToken[0] == 'a'){
+                while(true){
+                    int peakChar = inputFile.peek();
+                    if(peakChar == EOF){
+                        break;
+                    } else {
+                        nextChar = (char)peakChar;
+                    }
+
+                    if(nextChar == ' ' || nextChar == '\n' || nextChar == '\t' || nextChar == '\r' || nextChar == ',' || nextChar == '=' || nextChar == '/'){
+                        break;
+                    }
+
+                    inputFile.get(nextChar);
+                    currentToken += nextChar;
                 }
 
-                if(nextChar == ' ' || nextChar == '\n' || nextChar == '\t' || nextChar == '\r' || nextChar == ',' || nextChar == '=' || nextChar == '/'){
-                    break;
+                if (currentToken == "add"){
+                    token = {line, "ARITHOP", currentToken};
+                    if(whatFlag == "-s"){
+                        cout << line << " <" << token.type << ", " << token.value << ">" << endl;
+                    }
+                    currentToken.clear();
+                    madeToken = true;
+                } else {
+                    errorFlag = true;
+                }
+            } else if (currentToken[0] == 'n'){
+                while(true){
+                    int peakChar = inputFile.peek();
+                    if(peakChar == EOF){
+                        break;
+                    } else {
+                        nextChar = (char)peakChar;
+                    }
+
+                    if(nextChar == ' ' || nextChar == '\n' || nextChar == '\t' || nextChar == '\r' || nextChar == ',' || nextChar == '=' || nextChar == '/'){
+                        break;
+                    }
+
+                    inputFile.get(nextChar);
+                    currentToken += nextChar;
                 }
 
-                inputFile.get(nextChar);
-                currentToken += nextChar;
-            }
+                if (currentToken == "nop"){
+                    token = {line, "NOP", currentToken};
+                    if(whatFlag == "-s"){
+                        cout << line << " <" << token.type << ", " << token.value << ">" << endl;
+                    }
+                    currentToken.clear();
+                    madeToken = true;
+                } else {
+                    errorFlag = true;
+                }
+            } else if (currentToken[0] == 'o'){
+                while(true){
+                    int peakChar = inputFile.peek();
+                    if(peakChar == EOF){
+                        break;
+                    } else {
+                        nextChar = (char)peakChar;
+                    }
 
-            if (currentToken == "output"){
-                token = {line, "OUTPUT", currentToken};
+                    if(nextChar == ' ' || nextChar == '\n' || nextChar == '\t' || nextChar == '\r' || nextChar == ',' || nextChar == '=' || nextChar == '/'){
+                        break;
+                    }
+
+                    inputFile.get(nextChar);
+                    currentToken += nextChar;
+                }
+
+                if (currentToken == "output"){
+                    token = {line, "OUTPUT", currentToken};
+                    if(whatFlag == "-s"){
+                        cout << line << " <" << token.type << ", " << token.value << ">" << endl;
+                    }
+                    currentToken.clear();
+                    madeToken = true;
+                } else {
+                    errorFlag = true;
+                }
+            } else if (currentToken[0] == '='){
+                if (nextChar == '>'){
+                    inputFile.get(nextChar);
+                    currentToken += nextChar;
+                    token = {line, "INTO", currentToken};
+                    if(whatFlag == "-s"){
+                        cout << line << " <" << token.type << ", " << token.value << ">" << endl;
+                    }
+                    currentToken.clear();
+                    madeToken = true;
+                } else {
+                    errorFlag = true;
+                }   
+            } else if (currentToken[0] == ','){
+                token = {line, "COMMA", currentToken};
                 if(whatFlag == "-s"){
                     cout << line << " <" << token.type << ", " << token.value << ">" << endl;
                 }
                 currentToken.clear();
-            } else {
-                errorFlag = true;
-            }
-        } else if (currentToken[0] == '='){
-            if (nextChar == '>'){
-                inputFile.get(nextChar);
-                currentToken += nextChar;
-                token = {line, "INTO", currentToken};
-                if(whatFlag == "-s"){
-                    cout << line << " <" << token.type << ", " << token.value << ">" << endl;
-                }
-                currentToken.clear();
-            } else {
-                errorFlag = true;
-            }   
-        } else if (currentToken[0] == ','){
-            token = {line, "COMMA", currentToken};
-            if(whatFlag == "-s"){
-                cout << line << " <" << token.type << ", " << token.value << ">" << endl;
-            }
-            currentToken.clear();
-        } else if (currentToken[0] >= '0' && currentToken[0] <= '9'){
-            bool skipLoop = false;
+                madeToken = true;
+            } else if (currentToken[0] >= '0' && currentToken[0] <= '9'){
+                bool skipLoop = false;
 
-            int peakChar = inputFile.peek();
-            if(peakChar == EOF){
-                skipLoop = true;
-            } else {
-                nextChar = (char)peakChar;
-            }
-
-            if (nextChar == ' ' || nextChar == '\n' || nextChar == '\t' || nextChar == '\r' || nextChar == ',' || nextChar == '=' || nextChar == '/'){
-                skipLoop = true;
-            }
-
-            while(true && !skipLoop){
                 int peakChar = inputFile.peek();
                 if(peakChar == EOF){
-                    break;
+                    skipLoop = true;
                 } else {
                     nextChar = (char)peakChar;
                 }
 
                 if (nextChar == ' ' || nextChar == '\n' || nextChar == '\t' || nextChar == '\r' || nextChar == ',' || nextChar == '=' || nextChar == '/'){
-                    break;
+                    skipLoop = true;
                 }
 
-                if(nextChar < '0' || nextChar > '9'){
-                    errorFlag = true;
-                    break;
-                }
+                while(true && !skipLoop){
+                    int peakChar = inputFile.peek();
+                    if(peakChar == EOF){
+                        break;
+                    } else {
+                        nextChar = (char)peakChar;
+                    }
 
-                if(nextChar == '0' && currentToken == "0"){
+                    if (nextChar == ' ' || nextChar == '\n' || nextChar == '\t' || nextChar == '\r' || nextChar == ',' || nextChar == '=' || nextChar == '/'){
+                        break;
+                    }
+
+                    if(nextChar < '0' || nextChar > '9'){
+                        errorFlag = true;
+                        break;
+                    }
+
+                    if(nextChar == '0' && currentToken == "0"){
+                        inputFile.get(nextChar);
+                        continue;
+                    }
+
+                    leadingZeroFlag = false;
                     inputFile.get(nextChar);
-                    continue;
+                    currentToken += nextChar;
                 }
 
-                leadingZeroFlag = false;
-                inputFile.get(nextChar);
-                currentToken += nextChar;
+                token = {line, "CONSTANT", currentToken};
+                if(whatFlag == "-s"){
+                    cout << line << " <" << token.type << ", " << token.value << ">" << endl;
+                }
+                madeToken = true;
+            } else {
+                errorFlag = true;
             }
-
-            token = {line, "CONSTANT", currentToken};
-            if(whatFlag == "-s"){
-                cout << line << " <" << token.type << ", " << token.value << ">" << endl;
-            }
-         } else if (currentToken[0] == '\n'){ //if EOL
-            token = {line, "EOL", "\\n"};
-            if(whatFlag == "-s"){
-                cout << line << " <" << token.type << ", " << token.value << ">" << endl;
-            }
-        } else {
-            errorFlag = true;
         }
-
         //END OF THE WHILE FOR SCANNER
 
         //PARSER LOGIC
+
+        if(!madeToken){
+            continue;
+        }
 
         if(token.type == "MEMOP"){
             memopFlag = true;
@@ -506,9 +548,9 @@ int main(int argc, char* args[]) {
             currentOpCode = token.value;
             lineNum = token.line;
 
-            opc1 = 0;
-            opc2 = 0;
-            opc3 = 0;
+            opc1 = -42;
+            opc2 = -42;
+            opc3 = -42;
 
             count = 1;
             continue;
@@ -522,9 +564,9 @@ int main(int argc, char* args[]) {
             currentOpCode = token.value;
             lineNum = token.line;
 
-            opc1 = 0;
-            opc2 = 0;
-            opc3 = 0;
+            opc1 = -42;
+            opc2 = -42;
+            opc3 = -42;
 
             count = 1;
             continue;
@@ -538,9 +580,9 @@ int main(int argc, char* args[]) {
             currentOpCode = token.value;
             lineNum = token.line;
 
-            opc1 = 0;
-            opc2 = 0;
-            opc3 = 0;
+            opc1 = -42;
+            opc2 = -42;
+            opc3 = -42;
 
             count = 1;
             continue;
@@ -554,9 +596,9 @@ int main(int argc, char* args[]) {
             currentOpCode = token.value;
             lineNum = token.line;
 
-            opc1 = 0;
-            opc2 = 0;
-            opc3 = 0;
+            opc1 = -42;
+            opc2 = -42;
+            opc3 = -42;
 
             count = 1;
             continue;
@@ -570,9 +612,9 @@ int main(int argc, char* args[]) {
             currentOpCode = token.value;
             lineNum = token.line;
 
-            opc1 = 0;
-            opc2 = 0;
-            opc3 = 0;
+            opc1 = -42;
+            opc2 = -42;
+            opc3 = -42;
 
             count = 1;
             continue;
@@ -615,9 +657,9 @@ int main(int argc, char* args[]) {
                     IR* newIR = new IR(lineNum, currentOpCode, opc1, opc2, opc3);
                     addIR(head, tail, newIR);
 
-                    opc1 = 0;
-                    opc2 = 0;
-                    opc3 = 0;
+                    opc1 = -42;
+                    opc2 = -42;
+                    opc3 = -42;
 
                     currentOpCode = "";
 
@@ -666,9 +708,9 @@ int main(int argc, char* args[]) {
                     IR* newIR = new IR(lineNum, currentOpCode, opc1, opc2, opc3);
                     addIR(head, tail, newIR);
 
-                    opc1 = 0;
-                    opc2 = 0;
-                    opc3 = 0;
+                    opc1 = -42;
+                    opc2 = -42;
+                    opc3 = -42;
 
                     currentOpCode = "";
 
@@ -723,9 +765,9 @@ int main(int argc, char* args[]) {
                     IR* newIR = new IR(lineNum, currentOpCode, opc1, opc2, opc3);
                     addIR(head, tail, newIR);
 
-                    opc1 = 0;
-                    opc2 = 0;
-                    opc3 = 0;
+                    opc1 = -42;
+                    opc2 = -42;
+                    opc3 = -42;
 
                     currentOpCode = "";
 
@@ -756,9 +798,9 @@ int main(int argc, char* args[]) {
                     IR* newIR = new IR(lineNum, currentOpCode, opc1, opc2, opc3);
                     addIR(head, tail, newIR);
 
-                    opc1 = 0;
-                    opc2 = 0;
-                    opc3 = 0;
+                    opc1 = -42;
+                    opc2 = -42;
+                    opc3 = -42;
 
                     currentOpCode = "";
 
@@ -779,9 +821,9 @@ int main(int argc, char* args[]) {
                 IR* newIR = new IR(lineNum, currentOpCode, opc1, opc2, opc3);
                 addIR(head, tail, newIR);
 
-                opc1 = 0;
-                opc2 = 0;
-                opc3 = 0;
+                opc1 = -42;
+                opc2 = -42;
+                opc3 = -42;
 
                 currentOpCode = "";
 
